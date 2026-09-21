@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fall Lineup</title>
+<meta name="description" content="Pick your fall activities and free weekends, then send your picks to the group chat.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fall Lineup">
+<meta property="og:description" content="What are we doing this fall, and when? Pick your activities and free weekends.">
+<meta property="og:url" content="https://rerogers0-lgtm.github.io/fall-activities/">
+<meta property="og:image" content="https://rerogers0-lgtm.github.io/fall-activities/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fall Lineup: a pumpkin, an apple, and autumn leaves">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://rerogers0-lgtm.github.io/fall-activities/card.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -84,7 +95,7 @@
   .best-date .n { font-weight: 700; }
   .no-overlap { font-size: 0.85rem; color: var(--cream-dim); font-style: italic; }
   .who { font-size: 0.78rem; color: var(--cream-dim); line-height: 1.6; overflow-wrap: anywhere; }
-  .strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 12px; }
+  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
   .cell { text-align: center; font-size: 0.66rem; color: var(--cream-dim); }
   .cell b { display: block; margin-top: 3px; height: 24px; line-height: 24px; border-radius: 4px; background: var(--bark-light); color: var(--cream-dim); font-weight: 600; font-size: 0.82rem; }
   .cell.top b { background: var(--pumpkin); color: var(--cream); }
@@ -199,9 +210,8 @@ const ACTIVITIES = [
 const WEEKENDS = [
   { id: "sep26", label: "Sep 26–27",               short: "Sep 26" },
   { id: "oct3",  label: "Oct 3–4",                 short: "Oct 3"  },
-  { id: "oct10", label: "Oct 10–11",               short: "Oct 10" },
-  { id: "oct17", label: "Oct 17–18",               short: "Oct 17" },
-  { id: "oct24", label: "Oct 24–26 (long weekend)", short: "Oct 24" },
+  { id: "oct10", label: "Oct 10–12 (long weekend)", short: "Oct 10" },
+  { id: "oct24", label: "Oct 24–25",               short: "Oct 24" },
   { id: "oct31", label: "Oct 31 (Sat)",            short: "Oct 31" }
 ];
 
@@ -241,7 +251,15 @@ function readStore() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     const obj = raw ? JSON.parse(raw) : {};
-    return obj && typeof obj === 'object' ? obj : {};
+    if (!obj || typeof obj !== 'object') return {};
+    // Saved picks may name options that were later removed (e.g. a dropped weekend): ignore those.
+    Object.keys(obj).forEach(k => {
+      const p = obj[k];
+      if (!p || typeof p.name !== 'string') { delete obj[k]; return; }
+      p.activities = (Array.isArray(p.activities) ? p.activities : []).filter(a => ACTIVITIES.includes(a));
+      p.availability = (Array.isArray(p.availability) ? p.availability : []).filter(id => weekendById(id));
+    });
+    return obj;
   } catch (e) { return {}; }
 }
 // Writes, then reads back, and reports whether it really persisted.
@@ -476,10 +494,10 @@ $('import').addEventListener('click', () => {
 });
 $('sample').addEventListener('click', () => {
   const sample = [
-    { name: 'Sam K.', activities: ['Winery Day', 'Fall Hike', 'Cabin Weekend'], availability: ['sep26', 'oct10', 'oct17'] },
+    { name: 'Sam K.', activities: ['Winery Day', 'Fall Hike', 'Cabin Weekend'], availability: ['sep26', 'oct10'] },
     { name: 'Priya R.', activities: ['Apple Orchard', 'Pumpkin Patch & Corn Maze', 'Winery Day'], availability: ['oct3', 'oct10', 'oct24'] },
     { name: 'Jordan T.', activities: ['Halloween Party', 'Winery Day', 'Fall Hike'], availability: ['oct10', 'oct24', 'oct31'] },
-    { name: 'Mia L.', activities: ['Pumpkin Patch & Corn Maze', 'Halloween Party', 'Cabin Weekend'], availability: ['oct17', 'oct24', 'oct31'] }
+    { name: 'Mia L.', activities: ['Pumpkin Patch & Corn Maze', 'Halloween Party', 'Cabin Weekend'], availability: ['oct24', 'oct31'] }
   ];
   const backup = JSON.parse(JSON.stringify(people));
   sample.forEach(r => { people[slugify(r.name)] = r; });
