@@ -71,8 +71,20 @@
   .opt:hover { border-color: var(--pumpkin); }
   .opt.checked { border-color: var(--pumpkin-bright); background: rgba(193,96,42,0.14); }
   .opt input { margin-top: 2px; accent-color: var(--pumpkin-bright); width: 16px; height: 16px; flex-shrink: 0; }
-  .opt input:focus-visible, button:focus-visible, a.btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .opt input:focus-visible, button:focus-visible, a.btn:focus-visible, .tab:focus-visible, .day:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .opt-title { font-size: 0.95rem; }
+
+  .day-groups { display: flex; flex-direction: column; gap: 16px; }
+  .day-group-label { font-size: 0.82rem; color: var(--cream-dim); margin-bottom: 8px; }
+  .day-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .day { position: relative; }
+  .day input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .day span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 64px; padding: 9px 6px; background: var(--bark-light); border: 1px solid var(--card-border); border-radius: 8px; transition: border-color .15s ease, background .15s ease; }
+  .day .dow { font: 600 0.7rem 'Inter', sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--cream-dim); }
+  .day .num { font: 600 1.05rem 'Inter', sans-serif; color: var(--cream); }
+  .day:hover span { border-color: var(--pumpkin); }
+  .day input:checked + span { border-color: var(--pumpkin-bright); background: rgba(193,96,42,0.14); }
+  .day input:checked + span .dow, .day input:checked + span .num { color: var(--pumpkin-bright); }
 
   .btn { display: inline-block; text-align: center; text-decoration: none; background: var(--pumpkin); color: var(--cream); border: 1px solid var(--pumpkin); border-radius: 8px; padding: 12px 16px; font: 600 0.95rem 'Inter', sans-serif; cursor: pointer; transition: background .15s ease; }
   .btn:hover { background: var(--pumpkin-bright); }
@@ -95,8 +107,8 @@
   .best-date .n { font-weight: 700; }
   .no-overlap { font-size: 0.85rem; color: var(--cream-dim); font-style: italic; }
   .who { font-size: 0.78rem; color: var(--cream-dim); line-height: 1.6; overflow-wrap: anywhere; }
-  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
-  .cell { text-align: center; font-size: 0.66rem; color: var(--cream-dim); }
+  .strip { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; padding-bottom: 2px; }
+  .cell { flex: 0 0 44px; text-align: center; font-size: 0.62rem; color: var(--cream-dim); }
   .cell b { display: block; margin-top: 3px; height: 24px; line-height: 24px; border-radius: 4px; background: var(--bark-light); color: var(--cream-dim); font-weight: 600; font-size: 0.82rem; }
   .cell.top b { background: var(--pumpkin); color: var(--cream); }
 
@@ -120,7 +132,7 @@
   <div class="banner" id="storageBanner" hidden></div>
 
   <h1>Fall Lineup</h1>
-  <p class="sub">Winery, orchard, pumpkin patch, a hike, a cabin weekend, and Halloween. Mark what you're in for and when you're free, then <strong>send your picks to the group chat</strong>.</p>
+  <p class="sub">Winery, orchard, pumpkin patch, a hike, and Halloween. Mark what you're in for and when you're free, then <strong>send your picks to the group chat</strong>.</p>
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-me" aria-selected="true" aria-controls="view-me" type="button">Your picks</button>
@@ -140,8 +152,8 @@
         <div class="options" id="activityOptions"></div>
       </div>
       <div class="field">
-        <label class="field-label">Which weekends are you free?</label>
-        <div class="options" id="dateOptions"></div>
+        <label class="field-label">Which days are you free?</label>
+        <div class="day-groups" id="dateOptions"></div>
       </div>
       <button class="btn block" id="saveBtn" type="button">Save my picks</button>
       <div class="status" id="statusMsg" role="status" aria-live="polite"></div>
@@ -161,7 +173,7 @@
 
   <div id="view-group" role="tabpanel" aria-labelledby="tab-group" hidden>
     <section>
-      <h2>Best date per activity</h2>
+      <h2>Best day per activity</h2>
       <div id="activitySummary"></div>
     </section>
     <section>
@@ -171,7 +183,7 @@
       <div class="paste">
         <label class="field-label" for="paste">Add replies from iMessage</label>
         <p class="hint">Paste one or more messages that start with "Fall plans:". A repeat name replaces that person's earlier picks.</p>
-        <textarea id="paste" placeholder="Fall plans: Sam K.&#10;Activities: Winery Day, Fall Hike&#10;Free: Sep 26, Oct 10"></textarea>
+        <textarea id="paste" placeholder="Fall plans: Sam K.&#10;Activities: Winery Day, Fall Hike&#10;Free: Fri Sep 25, Sat Oct 10"></textarea>
         <div class="row">
           <button class="btn" id="import" type="button">Add to group</button>
           <button class="btn ghost" id="sample" type="button">Load sample</button>
@@ -202,18 +214,38 @@ const ACTIVITIES = [
   "Apple Orchard",
   "Pumpkin Patch & Corn Maze",
   "Fall Hike",
-  "Cabin Weekend",
   "Halloween Party"
 ];
 
-// `short` is what goes in the iMessage text and what the importer matches on.
-const WEEKENDS = [
-  { id: "sep26", label: "Sep 26–27",               short: "Sep 26" },
-  { id: "oct3",  label: "Oct 3–4",                 short: "Oct 3"  },
-  { id: "oct10", label: "Oct 10–12 (long weekend)", short: "Oct 10" },
-  { id: "oct24", label: "Oct 24–25",               short: "Oct 24" },
-  { id: "oct31", label: "Oct 31 (Sat)",            short: "Oct 31" }
+// Individual days, grouped by weekend. `date` (e.g. "Sep 25") is what goes in
+// the iMessage text and what the importer matches on — unique across every
+// day here, so matching just the date (ignoring the weekday prefix) is safe.
+const GROUPS = [
+  { id: "sep26", label: "Weekend of Sep 26" },
+  { id: "oct3",  label: "Weekend of Oct 3" },
+  { id: "oct10", label: "Oct 10 long weekend — Indigenous Peoples' Day" },
+  { id: "oct24", label: "Weekend of Oct 24" },
+  { id: "oct31", label: "Weekend of Oct 31 — Halloween" }
 ];
+const DAYS = [
+  { id: "sep25", group: "sep26", dow: "Fri", date: "Sep 25" },
+  { id: "sep26", group: "sep26", dow: "Sat", date: "Sep 26" },
+  { id: "sep27", group: "sep26", dow: "Sun", date: "Sep 27" },
+  { id: "oct2",  group: "oct3",  dow: "Fri", date: "Oct 2" },
+  { id: "oct3",  group: "oct3",  dow: "Sat", date: "Oct 3" },
+  { id: "oct4",  group: "oct3",  dow: "Sun", date: "Oct 4" },
+  { id: "oct9",  group: "oct10", dow: "Fri", date: "Oct 9" },
+  { id: "oct10", group: "oct10", dow: "Sat", date: "Oct 10" },
+  { id: "oct11", group: "oct10", dow: "Sun", date: "Oct 11" },
+  { id: "oct12", group: "oct10", dow: "Mon", date: "Oct 12" },
+  { id: "oct23", group: "oct24", dow: "Fri", date: "Oct 23" },
+  { id: "oct24", group: "oct24", dow: "Sat", date: "Oct 24" },
+  { id: "oct25", group: "oct24", dow: "Sun", date: "Oct 25" },
+  { id: "oct30", group: "oct31", dow: "Fri", date: "Oct 30" },
+  { id: "oct31", group: "oct31", dow: "Sat", date: "Oct 31" },
+  { id: "nov1",  group: "oct31", dow: "Sun", date: "Nov 1" }
+];
+DAYS.forEach(d => { d.short = `${d.dow} ${d.date}`; }); // e.g. "Fri Sep 25", used in messages + results
 
 const STORE_KEY = 'fall-lineup-2026:people';
 const ME_KEY = 'fall-lineup-2026:me';
@@ -235,7 +267,7 @@ function esc(s) {
 function slugify(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
-const weekendById = id => WEEKENDS.find(w => w.id === id);
+const dayById = id => DAYS.find(d => d.id === id);
 
 // ---------- storage (this browser only) ----------
 function healthCheck() {
@@ -257,7 +289,7 @@ function readStore() {
       const p = obj[k];
       if (!p || typeof p.name !== 'string') { delete obj[k]; return; }
       p.activities = (Array.isArray(p.activities) ? p.activities : []).filter(a => ACTIVITIES.includes(a));
-      p.availability = (Array.isArray(p.availability) ? p.availability : []).filter(id => weekendById(id));
+      p.availability = (Array.isArray(p.availability) ? p.availability : []).filter(id => dayById(id));
     });
     return obj;
   } catch (e) { return {}; }
@@ -285,13 +317,34 @@ function buildOptions(container, items, getId, getLabel) {
   });
 }
 buildOptions(activityBox, ACTIVITIES, a => a, a => a);
-buildOptions(dateBox, WEEKENDS, w => w.id, w => w.label);
+
+// Days are grouped under their weekend so a long list of checkboxes reads as
+// "which weekend, which day" instead of one flat wall of dates.
+function buildDayGroups(container) {
+  container.innerHTML = '';
+  GROUPS.forEach(g => {
+    const wrap = document.createElement('div');
+    wrap.className = 'day-group';
+    const row = DAYS.filter(d => d.group === g.id).map(d => `
+      <label class="day">
+        <input type="checkbox" value="${esc(d.id)}">
+        <span><span class="dow">${esc(d.dow)}</span><span class="num">${esc(d.date.split(' ')[1])}</span></span>
+      </label>`).join('');
+    wrap.innerHTML = `<p class="day-group-label">${esc(g.label)}</p><div class="day-row">${row}</div>`;
+    container.appendChild(wrap);
+  });
+}
+buildDayGroups(dateBox);
 
 const getChecked = c => Array.from(c.querySelectorAll('input:checked')).map(el => el.value);
 function setChecks(container, values) {
+  // Setting .checked directly doesn't fire 'change', so .opt rows (styled via
+  // a JS-toggled class) need their highlight set by hand; day chips restyle
+  // on their own from the :checked CSS selector.
   container.querySelectorAll('input').forEach(cb => {
     cb.checked = values.includes(cb.value);
-    cb.closest('.opt').classList.toggle('checked', cb.checked);
+    const opt = cb.closest('.opt');
+    if (opt) opt.classList.toggle('checked', cb.checked);
   });
 }
 function setStatus(el, msg, isErr) { el.textContent = msg || ''; el.className = 'status' + (isErr ? ' err' : ''); }
@@ -326,7 +379,7 @@ nameInput.addEventListener('input', () => {
 
 function buildMessage(rec) {
   const acts = rec.activities.length ? rec.activities.join(', ') : 'none yet';
-  const free = rec.availability.length ? rec.availability.map(id => weekendById(id).short).join(', ') : 'none of these';
+  const free = rec.availability.length ? rec.availability.map(id => dayById(id).short).join(', ') : 'none of these';
   return `Fall plans: ${rec.name}\nActivities: ${acts}\nFree: ${free}`;
 }
 function showMessage(rec) {
@@ -342,7 +395,7 @@ saveBtn.addEventListener('click', () => {
   const slug = slugify(name);
   if (!slug) { setStatus(statusMsg, 'Use letters or numbers in your name.', true); nameInput.focus(); return; }
   const activities = getChecked(activityBox), availability = getChecked(dateBox);
-  if (!activities.length && !availability.length) { setStatus(statusMsg, 'Pick at least one activity or weekend.', true); return; }
+  if (!activities.length && !availability.length) { setStatus(statusMsg, 'Pick at least one activity or day.', true); return; }
 
   // Same name as someone already saved, and the form wasn't loaded from them: ask first.
   if (people[slug] && loadedSlug !== slug && confirmReplaceSlug !== slug) {
@@ -386,7 +439,7 @@ function renderSummary() {
   box.innerHTML = '';
   const cards = ACTIVITIES.map(activity => {
     const interested = all.filter(p => p.activities.includes(activity));
-    const counts = WEEKENDS.map(w => ({ w, names: interested.filter(p => p.availability.includes(w.id)).map(p => p.name) }));
+    const counts = DAYS.map(d => ({ d, names: interested.filter(p => p.availability.includes(d.id)).map(p => p.name) }));
     const max = Math.max(0, ...counts.map(c => c.names.length));
     return { activity, interested, counts, max, tops: max ? counts.filter(c => c.names.length === max) : [] };
   }).sort((a, b) => b.interested.length - a.interested.length || ACTIVITIES.indexOf(a.activity) - ACTIVITIES.indexOf(b.activity));
@@ -402,15 +455,15 @@ function renderSummary() {
     const best = tops[0];
     let body;
     if (!max) {
-      body = '<p class="no-overlap">No shared free weekend marked yet</p>';
+      body = '<p class="no-overlap">No shared free day marked yet</p>';
     } else {
-      const cant = interested.filter(p => !p.availability.includes(best.w.id)).map(p => p.name);
-      body = `<div class="best-date"><span class="n">${esc(best.w.label)}</span> — ${max} of ${interested.length} free</div>
+      const cant = interested.filter(p => !p.availability.includes(best.d.id)).map(p => p.name);
+      body = `<div class="best-date"><span class="n">${esc(best.d.short)}</span> — ${max} of ${interested.length} free</div>
         <p class="who">Free then: ${esc(best.names.join(', '))}</p>
         ${cant.length ? `<p class="who">Can't make it: ${esc(cant.join(', '))}</p>` : ''}
-        ${tops.length > 1 ? `<p class="who">Tied with: ${esc(tops.slice(1).map(t => t.w.label).join(', '))}</p>` : ''}`;
+        ${tops.length > 1 ? `<p class="who">Tied with: ${esc(tops.slice(1).map(t => t.d.short).join(', '))}</p>` : ''}`;
     }
-    const strip = counts.map(c => `<div class="cell${tops.includes(c) ? ' top' : ''}">${esc(c.w.short)}<b>${c.names.length}</b></div>`).join('');
+    const strip = counts.map(c => `<div class="cell${tops.includes(c) ? ' top' : ''}">${esc(c.d.dow)} ${esc(c.d.date.split(' ')[1])}<b>${c.names.length}</b></div>`).join('');
     card.innerHTML = `<p class="a-title">${esc(activity)}</p>
       <p class="a-count">${interested.length} interested: ${esc(interested.map(p => p.name).join(', '))}</p>
       ${body}<div class="strip" aria-hidden="true">${strip}</div>`;
@@ -429,7 +482,7 @@ function renderRoster() {
     const row = document.createElement('div');
     row.className = 'roster-row';
     row.innerHTML = `<div><div class="r-name">${esc(p.name)}</div>
-      <div class="r-meta">${esc(p.activities.join(', ') || 'No activities')} · Free: ${esc(p.availability.map(id => weekendById(id).short).join(', ') || 'none')}</div></div>
+      <div class="r-meta">${esc(p.activities.join(', ') || 'No activities')} · Free: ${esc(p.availability.map(id => dayById(id).short).join(', ') || 'none')}</div></div>
       <button type="button" aria-label="Remove ${esc(p.name)}">remove</button>`;
     const btn = row.querySelector('button');
     let armed = false;
@@ -475,7 +528,9 @@ function parseMessages(text) {
     const actLine = (chunk.match(/^\s*activities\s*:\s*(.*)$/im) || [])[1] || '';
     const freeLine = (chunk.match(/^\s*free\s*:\s*(.*)$/im) || [])[1] || '';
     const activities = ACTIVITIES.filter(a => actLine.toLowerCase().includes(a.toLowerCase()));
-    const availability = WEEKENDS.filter(w => new RegExp('(^|[^a-z0-9])' + w.short.replace(' ', '\\s*') + '(?![0-9])', 'i').test(freeLine)).map(w => w.id);
+    // Match on the date only (e.g. "Sep 25"), ignoring any weekday prefix, so
+    // this still finds a day even if someone edits or retypes the message.
+    const availability = DAYS.filter(d => new RegExp('(^|[^a-z0-9])' + d.date.replace(' ', '\\s*') + '(?![0-9])', 'i').test(freeLine)).map(d => d.id);
     out.push({ name, activities, availability });
   });
   return out;
@@ -494,10 +549,10 @@ $('import').addEventListener('click', () => {
 });
 $('sample').addEventListener('click', () => {
   const sample = [
-    { name: 'Sam K.', activities: ['Winery Day', 'Fall Hike', 'Cabin Weekend'], availability: ['sep26', 'oct10'] },
+    { name: 'Sam K.', activities: ['Winery Day', 'Fall Hike'], availability: ['sep26', 'oct10', 'oct23'] },
     { name: 'Priya R.', activities: ['Apple Orchard', 'Pumpkin Patch & Corn Maze', 'Winery Day'], availability: ['oct3', 'oct10', 'oct24'] },
-    { name: 'Jordan T.', activities: ['Halloween Party', 'Winery Day', 'Fall Hike'], availability: ['oct10', 'oct24', 'oct31'] },
-    { name: 'Mia L.', activities: ['Pumpkin Patch & Corn Maze', 'Halloween Party', 'Cabin Weekend'], availability: ['oct24', 'oct31'] }
+    { name: 'Jordan T.', activities: ['Halloween Party', 'Winery Day', 'Fall Hike'], availability: ['oct9', 'oct10', 'oct31'] },
+    { name: 'Mia L.', activities: ['Pumpkin Patch & Corn Maze', 'Halloween Party'], availability: ['oct24', 'oct30', 'oct31'] }
   ];
   const backup = JSON.parse(JSON.stringify(people));
   sample.forEach(r => { people[slugify(r.name)] = r; });
